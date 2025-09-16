@@ -1,0 +1,114 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker-deploy:
+    if: github.repository_owner == 'xanox-org'
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+          
+      - name: Cache Maven artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+            
+      - name: Cache node
+        uses: actions/cache@v4
+        with:
+          path: web-bundle/node
+          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os}}-node-
+            
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web-bundle/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os}}-node_modules-
+            
+      - name: Build application
+        run: mvn clean package -DskipTests
+        
+      - name: Build Docker image
+        run: |
+          docker build -t ghmpdnl:latest .
+          docker tag ghmpdnl:latest ghmpdnl:${{ github.sha }}
+          
+      - name: Deploy to Docker host
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Stop and remove existing container if it exists
+            docker stop ghmpdnl || true
+            docker rm ghmpdnl || true
+            
+            # Remove old images (keep latest 3)
+            docker images ghmpdnl --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -v latest | tail -n +4 | awk '{print $2}' | xargs -r docker rmi || true
+            
+      - name: Save Docker image
+        run: |
+          docker save ghmpdnl:latest | gzip > ghmpdnl-latest.tar.gz
+          
+      - name: Transfer Docker image
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "ghmpdnl-latest.tar.gz"
+          target: "/tmp/"
+          
+      - name: Load and run Docker container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Load the Docker image
+            gunzip -c /tmp/ghmpdnl-latest.tar.gz | docker load
+            
+            # Create necessary directories if they don't exist
+            mkdir -p ~/ghmpdnl/data ~/ghmpdnl/graph-cache
+            
+            # Run the new container
+            docker run -d \
+              --name ghmpdnl \
+              --restart unless-stopped \
+              -p 8989:8989 \
+              -v ~/ghmpdnl/data:/app/data \
+              -v ~/ghmpdnl/graph-cache:/app/graph-cache \
+              ghmpdnl:latest
+              
+            # Clean up transferred file
+            rm -f /tmp/ghmpdnl-latest.tar.gz
+            
+            # Wait a moment and check if container is running
+            sleep 10
+            docker ps | grep ghmpdnl
+            
+            # Show container logs
+            docker logs --tail 20 ghmpdnl

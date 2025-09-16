@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+CHANGELOG.md
+CONTRIBUTING.md
+CONTRIBUTORS.md
+NOTICE.md
+
+# Build artifacts (except the final JAR)
+target/
+!web/target/graphhopper-web-*.jar
+.m2/
+*.class
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Node modules
+node_modules/
+web-bundle/node/
+web-bundle/node_modules/
+
+# Test files
+**/*test*
+**/test/
+
+# AppVeyor
+appveyor.yml
+
+# GitHub workflows (not needed in container)
+.github/
+
+# Examples and tools (not needed for runtime)
+example/
+tools/
+benchmark/

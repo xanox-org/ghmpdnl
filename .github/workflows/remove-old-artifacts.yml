@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
 jobs:
   remove-old-artifacts:
-    if: github.repository_owner == 'graphhopper'
+    if: github.repository_owner == 'xanox-org'
     name: Remove old artifacts
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10 # stop the task if it takes longer
 
     steps:
@@ -19,9 +19,9 @@ jobs:
         skip-recent: 300
 
   remove-old-artifacts-2:
-    if: github.repository_owner == 'graphhopper'
+    if: github.repository_owner == 'xanox-org'
     name: Remove old artifacts
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10 # stop the task if it takes longer
 
     steps:
@@ -47,9 +47,9 @@ jobs:
         min-versions-to-keep: 300
 
   remove-old-artifacts-3:
-    if: github.repository_owner == 'graphhopper'
+    if: github.repository_owner == 'xanox-org'
     name: Remove old artifacts 3
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10 # stop the task if it takes longer
 
     steps:

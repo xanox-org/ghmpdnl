@@ -2,8 +2,8 @@ name: Trigger Benchmarks
 on: push
 jobs:
   trigger_measurement:
-    if: github.repository_owner == 'graphhopper'
-    runs-on: ubuntu-latest
+    if: github.repository_owner == 'xanox-org'
+    runs-on: self-hosted
     environment: benchmarks
     steps:
       - name: trigger

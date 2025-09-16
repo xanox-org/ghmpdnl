@@ -8,8 +8,8 @@ on:
 
 jobs:
   publish:
-    if: github.repository_owner == 'graphhopper'
-    runs-on: ubuntu-latest
+    if: github.repository_owner == 'xanox-org'
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
