@@ -91,8 +91,23 @@ jobs:
             # Load the Docker image
             gunzip -c /tmp/ghmpdnl-latest.tar.gz | docker load
             
-            # Create necessary directories if they don't exist
-            mkdir -p ~/ghmpdnl/data ~/ghmpdnl/graph-cache
+            # Create the volume if it doesn't exist
+            docker volume create graphhopper || true
+            
+            # Initialize volume with configuration if needed
+            docker run --rm \
+              -v graphhopper:/volume \
+              -v "$(pwd)":/source:ro \
+              alpine:latest sh -c '
+                # Copy configuration files to volume if they don't exist
+                if [ ! -f /volume/config.yml ]; then
+                  cp /source/docker-config.yml /volume/config.yml
+                fi
+                # Create necessary directories
+                mkdir -p /volume/data /volume/graph-cache /volume/config
+                # Set proper permissions
+                chown -R 999:999 /volume 2>/dev/null || true
+              '
             
             # Run the new container
             docker run -d \
@@ -100,8 +115,7 @@ jobs:
               --restart unless-stopped \
               -p 8989:8989 \
               -p 8990:8990 \
-              -v ~/ghmpdnl/data:/app/data \
-              -v ~/ghmpdnl/graph-cache:/app/graph-cache \
+              -v graphhopper:/app/volume \
               --memory=4g \
               --cpus=2 \
               -e JAVA_OPTS="-Xmx3g -Xms1g -XX:+UseG1GC -XX:+UseContainerSupport" \

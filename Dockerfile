@@ -14,10 +14,10 @@ RUN groupadd -r graphhopper && useradd -r -g graphhopper graphhopper
 COPY web/target/graphhopper-web-*.jar app.jar
 
 # Copy configuration file
-COPY docker-config.yml config.yml
+COPY docker-config.yml /tmp/config.yml
 
-# Create directories for data and cache
-RUN mkdir -p /app/data /app/graph-cache && \
+# Create directories for data and cache  
+RUN mkdir -p /app/volume && \
     chown -R graphhopper:graphhopper /app
 
 # Switch to non-root user
@@ -34,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENV JAVA_OPTS="-Xmx2g -Xms1g"
 
 # Default command to run the application
-CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar server config.yml"]
+CMD ["sh", "-c", "cp -n /tmp/config.yml /app/volume/config.yml 2>/dev/null || true && java $JAVA_OPTS -jar app.jar server /app/volume/config.yml"]

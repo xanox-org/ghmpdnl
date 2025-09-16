@@ -15,9 +15,11 @@ The GitHub Actions workflow `docker-deploy.yml` will automatically:
 - **Container Name**: `ghmpdnl`
 - **Port**: 8989 (HTTP API)
 - **Admin Port**: 8990 (Admin interface)
-- **Volumes**:
-  - `~/ghmpdnl/data:/app/data` - For input data files (OSM PBF files)
-  - `~/ghmpdnl/graph-cache:/app/graph-cache` - For processed graph data
+- **Volume**: 
+  - `graphhopper:/app/volume` - Persistent volume containing:
+    - `config.yml` - Application configuration
+    - `data/` - Directory for input data files (OSM PBF files)
+    - `graph-cache/` - Directory for processed graph data
 
 ## Configuration
 
@@ -26,6 +28,8 @@ The container uses the `docker-config.yml` configuration file which:
 - Sets up basic car routing profile
 - Uses RAM storage for the graph
 - Configures console logging
+- References data files in the persistent volume (`/app/volume/data/map.osm.pbf`)
+- Stores graph cache in the persistent volume (`/app/volume/graph-cache`)
 
 ## Usage
 
@@ -38,25 +42,33 @@ Once deployed, the GraphHopper API will be available at:
 
 To use the routing engine, you need to:
 
-1. Place OSM PBF files in the `~/ghmpdnl/data/` directory on your Docker host
-2. Update the configuration to point to your data file
+1. Place OSM PBF files in the volume's data directory
+2. The configuration is already set to look for `/app/volume/data/map.osm.pbf`
 3. Restart the container to import the data
 
 Example:
 ```bash
-# Place your OSM file
-cp some-region.osm.pbf ~/ghmpdnl/data/
+# Copy your OSM file to the volume (using a temporary container)
+docker run --rm -v graphhopper:/volume -v "$(pwd)":/host alpine:latest \
+  cp /host/some-region.osm.pbf /volume/data/map.osm.pbf
 
-# Restart container with data file
-docker stop ghmpdnl
-docker run -d \
-  --name ghmpdnl \
-  --restart unless-stopped \
-  -p 8989:8989 \
-  -v ~/ghmpdnl/data:/app/data \
-  -v ~/ghmpdnl/graph-cache:/app/graph-cache \
-  -e JAVA_OPTS="-Xmx4g -Xms2g -Ddw.graphhopper.datareader.file=/app/data/some-region.osm.pbf" \
-  ghmpdnl:latest
+# Restart the container to process the new data
+docker restart ghmpdnl
+
+# Check logs to see the import progress
+docker logs -f ghmpdnl
+```
+
+## Managing the Volume
+
+You can inspect or modify the volume contents:
+
+```bash
+# Browse the volume contents
+docker run --rm -it -v graphhopper:/volume alpine:latest ls -la /volume
+
+# Access volume for maintenance
+docker run --rm -it -v graphhopper:/volume alpine:latest sh
 ```
 
 ## Secrets Required

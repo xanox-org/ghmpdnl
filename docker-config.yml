@@ -9,10 +9,10 @@ server:
       bindHost: 0.0.0.0
 
 graphhopper:
-  # No data reader file specified - will require manual data import
-  datareader.file: ""
+  # Data reader file - will be placed in the volume
+  datareader.file: "/app/volume/data/map.osm.pbf"
   # Local folder used by graphhopper to store its data
-  graph.location: graph-cache
+  graph.location: /app/volume/graph-cache
   
   # Basic routing profiles
   profiles:
