@@ -49,10 +49,22 @@ jobs:
       - name: Build application
         run: mvn clean package -DskipTests
         
-      - name: Build Docker image
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY_URL }}
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        
+      - name: Build and push Docker image
         run: |
-          docker build -t ghmpdnl:latest .
-          docker tag ghmpdnl:latest ghmpdnl:${{ github.sha }}
+          # Build image with registry tag
+          docker build -t ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest .
+          docker tag ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:${{ github.sha }}
+          
+          # Push images to registry
+          docker push ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
+          docker push ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:${{ github.sha }}
           
       - name: Deploy to Docker host
         uses: appleboy/ssh-action@v1.0.3
@@ -61,35 +73,26 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Log in to Docker Registry on remote host
+            echo "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY_URL }} -u "${{ secrets.DOCKER_REGISTRY_USERNAME }}" --password-stdin
+            
             # Stop and remove existing container if it exists
             docker stop ghmpdnl || true
             docker rm ghmpdnl || true
             
-            # Remove old images (keep latest 3)
-            docker images ghmpdnl --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -v latest | tail -n +4 | awk '{print $2}' | xargs -r docker rmi || true
+            # Remove old local images (keep latest 3)
+            docker images ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -v latest | tail -n +4 | awk '{print $2}' | xargs -r docker rmi || true
             
-      - name: Save Docker image
-        run: |
-          docker save ghmpdnl:latest | gzip > ghmpdnl-latest.tar.gz
-          
-      - name: Transfer Docker image
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "ghmpdnl-latest.tar.gz"
-          target: "/tmp/"
-          
-      - name: Load and run Docker container
+            # Pull the latest image from registry
+            docker pull ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
+            
+      - name: Run Docker container
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Load the Docker image
-            gunzip -c /tmp/ghmpdnl-latest.tar.gz | docker load
             
             # Create the volume if it doesn't exist
             docker volume create graphhopper || true
@@ -119,11 +122,8 @@ jobs:
               --memory=4g \
               --cpus=2 \
               -e JAVA_OPTS="-Xmx3g -Xms1g -XX:+UseG1GC -XX:+UseContainerSupport" \
-              ghmpdnl:latest
+              ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
               
-            # Clean up transferred file
-            rm -f /tmp/ghmpdnl-latest.tar.gz
-            
             # Wait a moment and check if container is running
             sleep 10
             docker ps | grep ghmpdnl

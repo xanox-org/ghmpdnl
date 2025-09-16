@@ -8,7 +8,8 @@ The GitHub Actions workflow `docker-deploy.yml` will automatically:
 
 1. Build the GraphHopper application using Maven
 2. Create a Docker image named `ghmpdnl`
-3. Deploy it to the configured Docker host using SSH
+3. Push the image to the configured Docker registry
+4. Deploy it to the configured Docker host by pulling from the registry
 
 ## Docker Container Details
 
@@ -77,3 +78,24 @@ The deployment workflow requires these organization secrets:
 - `SSH_HOST` - The hostname/IP of your Docker host
 - `SSH_USER` - SSH username for the Docker host
 - `SSH_PRIVATE_KEY` - SSH private key for authentication
+- `DOCKER_REGISTRY_URL` - URL of your Docker registry (e.g., `docker.io`, `ghcr.io`, or your private registry)
+- `DOCKER_REGISTRY_USERNAME` - Username for Docker registry authentication
+- `DOCKER_REGISTRY_PASSWORD` - Password or token for Docker registry authentication
+
+## Docker Registry Setup
+
+The workflow now uses a Docker registry to store and distribute images:
+
+1. **GitHub Container Registry (recommended)**:
+   - Set `DOCKER_REGISTRY_URL` to `ghcr.io`
+   - Set `DOCKER_REGISTRY_USERNAME` to your GitHub username
+   - Set `DOCKER_REGISTRY_PASSWORD` to a GitHub Personal Access Token with `write:packages` permission
+
+2. **Docker Hub**:
+   - Set `DOCKER_REGISTRY_URL` to `docker.io`
+   - Set `DOCKER_REGISTRY_USERNAME` to your Docker Hub username
+   - Set `DOCKER_REGISTRY_PASSWORD` to your Docker Hub password or access token
+
+3. **Private Registry**:
+   - Set `DOCKER_REGISTRY_URL` to your registry URL (e.g., `registry.example.com`)
+   - Set credentials according to your registry's authentication method
