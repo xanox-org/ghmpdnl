@@ -25,9 +25,9 @@
     </properties>
 
     <scm>
-        <connection>scm:git:git@github.com:graphhopper/graphhopper.git</connection>
-        <developerConnection>scm:git:git@github.com:graphhopper/graphhopper.git</developerConnection>
-        <url>git@github.com:graphhopper/graphhopper.git</url>
+        <connection>scm:git:git@github.com:xanox-org/ghmpdnl.git</connection>
+        <developerConnection>scm:git:git@github.com:xanox-org/ghmpdnl.git</developerConnection>
+        <url>git@github.com:xanox-org/ghmpdnl.git</url>
     </scm>
 
     <licenses>
@@ -54,7 +54,7 @@
     </mailingLists>
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/graphhopper/graphhopper/issues</url>
+        <url>https://github.com/xanox-org/ghmpdnl/issues</url>
     </issueManagement>
 
     <modules>
@@ -280,8 +280,8 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub GraphHopper Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/graphhopper/graphhopper</url>
+            <name>GitHub xanox-org ghmpdnl Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/xanox-org/ghmpdnl</url>
         </repository>
     </distributionManagement>
 
