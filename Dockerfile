@@ -26,9 +26,9 @@ USER graphhopper
 # Expose the default port
 EXPOSE 8989
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8989/health || exit 1
+# Health check - wait for application to be ready
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8989/info || exit 1
 
 # Set JVM options for container environment
 ENV JAVA_OPTS="-Xmx2g -Xms1g"

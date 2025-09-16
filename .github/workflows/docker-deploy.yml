@@ -99,8 +99,12 @@ jobs:
               --name ghmpdnl \
               --restart unless-stopped \
               -p 8989:8989 \
+              -p 8990:8990 \
               -v ~/ghmpdnl/data:/app/data \
               -v ~/ghmpdnl/graph-cache:/app/graph-cache \
+              --memory=4g \
+              --cpus=2 \
+              -e JAVA_OPTS="-Xmx3g -Xms1g -XX:+UseG1GC -XX:+UseContainerSupport" \
               ghmpdnl:latest
               
             # Clean up transferred file
