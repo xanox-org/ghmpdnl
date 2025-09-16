@@ -1,0 +1,53 @@
+server:
+  applicationConnectors:
+    - type: http
+      port: 8989
+      bindHost: 0.0.0.0
+  adminConnectors:
+    - type: http
+      port: 8990
+      bindHost: 0.0.0.0
+
+graphhopper:
+  # Data reader file - netherlands map file in the volume
+  datareader.file: "/app/volume/netherlands-latest.osm.pbf"
+  # Local folder used by graphhopper to store its data
+  graph.location: /app/volume/graph-cache
+  
+  # Custom models directory
+  custom_models.directory: /app/volume/custom_models
+  
+  # Basic routing profiles
+  profiles:
+    - name: car
+      vehicle: car
+      weighting: fastest
+      turn_costs: false
+    - name: moped_nl
+      vehicle: motorcycle
+      weighting: custom
+      custom_model_files: ["moped_nl_model.json"]
+
+  # Import settings
+  graph.flag_encoders: car
+  graph.dataaccess: RAM_STORE
+
+  # Web settings
+  web:
+    bind_host: 0.0.0.0
+    port: 8989
+
+# Logging configuration
+logging:
+  level: INFO
+  loggers:
+    com.graphhopper: INFO
+    "org.eclipse.jetty": WARN
+  appenders:
+    - type: console
+      logFormat: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    - type: file
+      currentLogFilename: /app/volume/logs/graphhopper.log
+      archivedLogFilenamePattern: /app/volume/logs/graphhopper-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+      logFormat: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

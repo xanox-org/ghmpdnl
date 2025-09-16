@@ -1,0 +1,146 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker-deploy:
+    if: github.repository_owner == 'xanox-org'
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+          
+      - name: Cache Maven artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+            
+      - name: Cache node
+        uses: actions/cache@v4
+        with:
+          path: web-bundle/node
+          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os}}-node-
+            
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web-bundle/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os}}-node_modules-
+            
+      - name: Build application
+        run: mvn clean package -DskipTests
+        
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY_URL }}
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        
+      - name: Build and push Docker image
+        run: |
+          # Build image with registry tag
+          docker build -t ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest .
+          docker tag ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:${{ github.sha }}
+          
+          # Push images to registry
+          docker push ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
+          docker push ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:${{ github.sha }}
+          
+      - name: Deploy to Docker host
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Log in to Docker Registry on remote host
+            echo "${{ secrets.DOCKER_REGISTRY_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY_URL }} -u "${{ secrets.DOCKER_REGISTRY_USERNAME }}" --password-stdin
+            
+            # Stop and remove existing container if it exists
+            docker stop ghmpdnl || true
+            docker rm ghmpdnl || true
+            
+            # Remove old local images (keep latest 3)
+            docker images ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -v latest | tail -n +4 | awk '{print $2}' | xargs -r docker rmi || true
+            
+            # Pull the latest image from registry
+            docker pull ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
+            
+      - name: Run Docker container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            
+            # Create the volume if it doesn't exist
+            docker volume create graphhopper || true
+            
+            # Initialize volume with proper directory structure
+            docker run --rm \
+              -v graphhopper:/volume \
+              alpine:latest sh -c '
+                # Create necessary directories with correct structure
+                mkdir -p /volume/custom_models /volume/graph-cache /volume/logs
+                
+                # Set proper permissions (999:999 is the graphhopper user in the container)
+                chown -R 999:999 /volume 2>/dev/null || true
+              '
+            
+            # Copy configuration and custom model to volume using a temporary container
+            docker run --rm \
+              -v graphhopper:/volume \
+              ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest sh -c '
+                # Copy configuration if it doesn't exist
+                if [ ! -f /volume/config.yml ]; then
+                  cp /tmp/config.yml /volume/config.yml
+                fi
+                
+                # Copy custom model if it doesn't exist
+                if [ ! -f /volume/custom_models/moped_nl_model.json ]; then
+                  cp /tmp/moped_nl_model.json /volume/custom_models/moped_nl_model.json
+                fi
+                
+                # Set permissions
+                chown -R 999:999 /volume 2>/dev/null || true
+              '
+            
+            # Run the new container
+            docker run -d \
+              --name ghmpdnl \
+              --restart unless-stopped \
+              -p 8989:8989 \
+              -p 8990:8990 \
+              -v graphhopper:/app/volume \
+              --memory=4g \
+              --cpus=2 \
+              -e JAVA_OPTS="-Xmx3g -Xms1g -XX:+UseG1GC -XX:+UseContainerSupport" \
+              ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest
+              
+            # Wait a moment and check if container is running
+            sleep 10
+            docker ps | grep ghmpdnl
+            
+            # Show container logs
+            docker logs --tail 20 ghmpdnl
