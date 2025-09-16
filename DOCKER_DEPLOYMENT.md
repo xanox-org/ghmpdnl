@@ -8,7 +8,7 @@ The GitHub Actions workflow `docker-deploy.yml` will automatically:
 
 1. Build the GraphHopper application using Maven
 2. Create a Docker image named `ghmpdnl`
-3. Push the image to the configured Docker registry
+3. Push the image to GitHub Container Registry (`ghcr.io/xanox-org/ghmpdnl`)
 4. Deploy it to the configured Docker host by pulling from the registry
 
 ## Docker Container Details
@@ -106,24 +106,34 @@ The deployment workflow requires these organization secrets:
 - `SSH_HOST` - The hostname/IP of your Docker host
 - `SSH_USER` - SSH username for the Docker host
 - `SSH_PRIVATE_KEY` - SSH private key for authentication
-- `DOCKER_REGISTRY_URL` - URL of your Docker registry (e.g., `docker.io`, `ghcr.io`, or your private registry)
-- `DOCKER_REGISTRY_USERNAME` - Username for Docker registry authentication
-- `DOCKER_REGISTRY_PASSWORD` - Password or token for Docker registry authentication
+
+**Note**: Docker registry authentication is handled automatically using GitHub Container Registry (ghcr.io) with built-in GitHub Actions authentication. No additional registry secrets are required.
 
 ## Docker Registry Setup
 
-The workflow now uses a Docker registry to store and distribute images:
+The workflow uses GitHub Container Registry (ghcr.io) for storing and distributing Docker images:
 
-1. **GitHub Container Registry (recommended)**:
-   - Set `DOCKER_REGISTRY_URL` to `ghcr.io`
-   - Set `DOCKER_REGISTRY_USERNAME` to your GitHub username
-   - Set `DOCKER_REGISTRY_PASSWORD` to a GitHub Personal Access Token with `write:packages` permission
+### GitHub Container Registry (Current Setup)
+- **Registry URL**: `ghcr.io`
+- **Authentication**: Automatic using GitHub Actions built-in authentication
+- **Image Location**: `ghcr.io/xanox-org/ghmpdnl`
+- **Permissions**: Uses the `GITHUB_TOKEN` with automatic package write permissions
+- **Username**: Uses `github.actor` (the user who triggered the workflow)
 
-2. **Docker Hub**:
-   - Set `DOCKER_REGISTRY_URL` to `docker.io`
-   - Set `DOCKER_REGISTRY_USERNAME` to your Docker Hub username
-   - Set `DOCKER_REGISTRY_PASSWORD` to your Docker Hub password or access token
+The workflow automatically:
+1. Authenticates with GitHub Container Registry using built-in credentials
+2. Builds the Docker image with the `ghcr.io/xanox-org/ghmpdnl` tag
+3. Pushes both `:latest` and `:sha` tagged versions
+4. Deploys from the registry to the target host
 
-3. **Private Registry**:
-   - Set `DOCKER_REGISTRY_URL` to your registry URL (e.g., `registry.example.com`)
-   - Set credentials according to your registry's authentication method
+### Alternative Registry Options (if needed)
+If you need to use a different registry, you would need to:
+
+1. **Docker Hub**:
+   - Add `DOCKER_REGISTRY_URL` secret: `docker.io`
+   - Add `DOCKER_REGISTRY_USERNAME` secret: your Docker Hub username
+   - Add `DOCKER_REGISTRY_PASSWORD` secret: your Docker Hub password or access token
+
+2. **Private Registry**:
+   - Add `DOCKER_REGISTRY_URL` secret: your registry URL (e.g., `registry.example.com`)
+   - Add credentials according to your registry's authentication method
