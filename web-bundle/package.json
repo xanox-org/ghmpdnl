@@ -1,0 +1,9 @@
+{
+  "name": "graphhopper-web-bundle",
+  "version": "11.0.0",
+  "description": "GraphHopper web bundle with maps",
+  "private": true,
+  "dependencies": {
+    "@graphhopper/graphhopper-maps-bundle": "0.0.0-040ae9d3f2c4a67588449027a29b0e86d93004fc"
+  }
+}
