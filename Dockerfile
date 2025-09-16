@@ -16,6 +16,9 @@ COPY web/target/graphhopper-web-*.jar app.jar
 # Copy configuration file
 COPY docker-config.yml /tmp/config.yml
 
+# Copy custom model file
+COPY moped_nl_model.json /tmp/moped_nl_model.json
+
 # Create directories for data and cache  
 RUN mkdir -p /app/volume && \
     chown -R graphhopper:graphhopper /app

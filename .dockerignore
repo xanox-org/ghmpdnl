@@ -11,9 +11,10 @@ CONTRIBUTING.md
 CONTRIBUTORS.md
 NOTICE.md
 
-# Build artifacts (except the final JAR)
+# Build artifacts (except the final JAR and custom model)
 target/
 !web/target/graphhopper-web-*.jar
+!moped_nl_model.json
 .m2/
 *.class
 

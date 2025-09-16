@@ -97,18 +97,32 @@ jobs:
             # Create the volume if it doesn't exist
             docker volume create graphhopper || true
             
-            # Initialize volume with configuration if needed
+            # Initialize volume with proper directory structure
             docker run --rm \
               -v graphhopper:/volume \
-              -v "$(pwd)":/source:ro \
               alpine:latest sh -c '
-                # Copy configuration files to volume if they don't exist
+                # Create necessary directories with correct structure
+                mkdir -p /volume/custom_models /volume/graph-cache /volume/logs
+                
+                # Set proper permissions (999:999 is the graphhopper user in the container)
+                chown -R 999:999 /volume 2>/dev/null || true
+              '
+            
+            # Copy configuration and custom model to volume using a temporary container
+            docker run --rm \
+              -v graphhopper:/volume \
+              ${{ secrets.DOCKER_REGISTRY_URL }}/ghmpdnl:latest sh -c '
+                # Copy configuration if it doesn't exist
                 if [ ! -f /volume/config.yml ]; then
-                  cp /source/docker-config.yml /volume/config.yml
+                  cp /tmp/config.yml /volume/config.yml
                 fi
-                # Create necessary directories
-                mkdir -p /volume/data /volume/graph-cache /volume/config
-                # Set proper permissions
+                
+                # Copy custom model if it doesn't exist
+                if [ ! -f /volume/custom_models/moped_nl_model.json ]; then
+                  cp /tmp/moped_nl_model.json /volume/custom_models/moped_nl_model.json
+                fi
+                
+                # Set permissions
                 chown -R 999:999 /volume 2>/dev/null || true
               '
             
