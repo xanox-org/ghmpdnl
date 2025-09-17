@@ -67,6 +67,9 @@ jobs:
           npm ci
           touch node_modules/.npm-install-complete
             
+      - name: Build and install web-api module first
+        run: mvn install -pl web-api -B
+        
       - name: Build application
         run: mvn install -B
         
