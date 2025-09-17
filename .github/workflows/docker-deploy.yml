@@ -32,22 +32,33 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+          fail-on-cache-miss: false
             
-      - name: Cache node
+      - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
           path: web-bundle/node
-          key: ${{ runner.os }}-node-${{ hashFiles('web-bundle/package-lock.json') }}
+          key: ${{ runner.os }}-node-v20.14.0-npm-10.7.0
           restore-keys: |
             ${{ runner.os }}-node-
+          fail-on-cache-miss: false
             
-      - name: Cache node_modules
+      - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
           path: web-bundle/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('web-bundle/package-lock.json') }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-modules-
+            ${{ runner.os }}-npm-
+          fail-on-cache-miss: false
+          
+      - name: Ensure npm dependencies are installed
+        run: |
+          cd web-bundle
+          if [ ! -d "node_modules" ] || [ ! -f "node_modules/.npm-install-complete" ]; then
+            npm ci
+            touch node_modules/.npm-install-complete
+          fi
             
       - name: Build application
         run: mvn clean package -DskipTests
