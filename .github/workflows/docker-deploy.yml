@@ -68,7 +68,7 @@ jobs:
           touch node_modules/.npm-install-complete
             
       - name: Build application
-        run: mvn clean package -DskipTests
+        run: mvn install -B
         
       - name: Validate Docker dependencies
         run: |
