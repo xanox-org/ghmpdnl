@@ -13,27 +13,73 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
           distribution: temurin
-      - name: Cache Maven artifacts
+      
+      # Enhanced Maven caching with better cache key strategy
+      - name: Cache Maven repository
         uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-maven-${{ matrix.java-version }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
+            ${{ runner.os }}-maven-${{ matrix.java-version }}-
             ${{ runner.os }}-maven-
-      - name: Cache node
+      
+      # Cache Maven dependencies offline
+      - name: Cache Maven dependencies offline store
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/.offline-cache
+          key: ${{ runner.os }}-maven-offline-${{ matrix.java-version }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-offline-${{ matrix.java-version }}-
+            ${{ runner.os }}-maven-offline-
+      
+      # Enhanced Node.js caching with version-specific keys
+      - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
           path: web-bundle/node
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-node-v20.14.0-${{ hashFiles('web-bundle/pom.xml') }}
           restore-keys: |
-            ${{ runner.os}}-node-
-      - name: Cache node_modules
+            ${{ runner.os }}-node-v20.14.0-
+            ${{ runner.os }}-node-
+      
+      # More precise npm cache with package-lock hash
+      - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
-          path: web-bundle/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml', '**/package.json') }}
+          path: |
+            web-bundle/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json', 'web-bundle/package.json') }}
           restore-keys: |
-            ${{ runner.os}}-node_modules-
-      - name: Build ${{ matrix.java-version }}
-        run: mvn -B clean test
+            ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
+            ${{ runner.os }}-npm-
+      
+      # Cache compiled classes to speed up incremental builds
+      - name: Cache compilation output
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/target/classes
+            **/target/test-classes
+          key: ${{ runner.os }}-compile-${{ matrix.java-version }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-compile-${{ matrix.java-version }}-
+      
+      # Pre-download dependencies offline to speed up builds
+      - name: Download dependencies offline
+        run: |
+          mvn dependency:go-offline -B -q || echo "Some dependencies may not be available offline"
+          mvn dependency:resolve-sources -B -q || echo "Source resolution completed with possible warnings"
+      
+      - name: Build and Test ${{ matrix.java-version }}
+        run: |
+          # Use multiple threads for faster builds on self-hosted runners
+          mvn -B -T 2C clean test \
+            -Dmaven.test.failure.ignore=false \
+            -Dmaven.compile.fork=true \
+            -Dmaven.compiler.maxmem=2048m
 

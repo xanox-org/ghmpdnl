@@ -11,12 +11,19 @@ CONTRIBUTING.md
 CONTRIBUTORS.md
 NOTICE.md
 
-# Build artifacts (except the final JAR and custom model)
+# Build artifacts (except the final JAR and required config files)
 target/
 !web/target/graphhopper-web-*.jar
+!docker-config.yml
 !moped_nl_model.json
 .m2/
 *.class
+
+# Cache directories
+**/target/classes
+**/target/test-classes
+**/target/generated-sources
+**/target/surefire-reports
 
 # IDE files
 .idea/
@@ -35,10 +42,11 @@ Thumbs.db
 *.temp
 *.log
 
-# Node modules
+# Node modules and cache
 node_modules/
 web-bundle/node/
 web-bundle/node_modules/
+.npm/
 
 # Test files
 **/*test*
@@ -54,3 +62,11 @@ appveyor.yml
 example/
 tools/
 benchmark/
+
+# Package manager files (not needed at runtime)
+package*.json
+pom.xml
+*/pom.xml
+
+# Configuration examples
+config-example.yml

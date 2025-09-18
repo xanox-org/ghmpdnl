@@ -22,36 +22,71 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: Cache Maven artifacts
+      # Enhanced caching for Maven Central publishing
+      - name: Cache Maven repository
         uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+            ~/.m2/.offline-cache
+          key: ${{ runner.os }}-maven-central-17-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
+            ${{ runner.os }}-maven-central-17-
+            ${{ runner.os }}-maven-publish-17-
+            ${{ runner.os }}-maven-prod-17-
             ${{ runner.os }}-maven-
-      - name: Cache node
+      
+      - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
           path: web-bundle/node
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-node-v20.14.0-${{ hashFiles('web-bundle/pom.xml') }}
           restore-keys: |
-            ${{ runner.os}}-node-
-      - name: Cache node_modules
+            ${{ runner.os }}-node-v20.14.0-
+            ${{ runner.os }}-node-
+      
+      - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
-          path: web-bundle/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml', '**/package.json') }}
+          path: |
+            web-bundle/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json', 'web-bundle/package.json') }}
           restore-keys: |
-            ${{ runner.os}}-node_modules-
-      - name: clean install
+            ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
+            ${{ runner.os }}-npm-
+      
+      # Cache GPG keyring for faster signing
+      - name: Cache GPG keyring
+        uses: actions/cache@v4
+        with:
+          path: ~/.gnupg
+          key: ${{ runner.os }}-gpg-${{ hashFiles('~/.gnupg/pubring.kbx') }}
+          restore-keys: |
+            ${{ runner.os }}-gpg-
+      
+      # Optimized dependency resolution
+      - name: Resolve dependencies offline  
         run: |
-          mvn -Dkey=$API_KEY clean install -B
+          mvn dependency:go-offline -B -q || echo "Some dependencies may not be available offline"
+          mvn dependency:resolve-sources -B -q || echo "Source resolution completed"
+      
+      - name: Clean install with optimizations
+        run: |
+          mvn -Dkey=$API_KEY clean install -B \
+            -T 2C \
+            -Dmaven.compile.fork=true \
+            -Dmaven.compiler.maxmem=2048m
 
-      - name: Build and publish package to maven central ${{ matrix.java-version }}
+      - name: Build and publish package to Maven Central with optimizations
         run: |
           echo "release to maven central"
           mvn -B versions:set -DnewVersion=$GITHUB_REF_NAME -DgenerateBackupPoms=false
-          mvn deploy -P release -DskipTests=true -Dpgp.secretkey=keyring:id=0E2FBADB -B
+          mvn deploy -P release -DskipTests=true -Dpgp.secretkey=keyring:id=0E2FBADB -B \
+            -T 2C \
+            -Dmaven.compile.fork=true \
+            -Dmaven.compiler.maxmem=2048m
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
