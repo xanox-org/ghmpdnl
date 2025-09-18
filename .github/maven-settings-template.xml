@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  Optimized Maven settings for self-hosted runners
+  This file can be used to configure Maven for better caching and performance
+  Place this as ~/.m2/settings.xml on your self-hosted runner
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <!-- Local repository location -->
+  <localRepository>${user.home}/.m2/repository</localRepository>
+
+  <!-- Plugin groups -->
+  <pluginGroups>
+    <pluginGroup>org.apache.maven.plugins</pluginGroup>
+    <pluginGroup>org.codehaus.mojo</pluginGroup>
+  </pluginGroups>
+
+  <!-- Profiles for optimization -->
+  <profiles>
+    <!-- Performance optimizations profile -->
+    <profile>
+      <id>performance</id>
+      <properties>
+        <!-- Use parallel downloads for faster dependency resolution -->
+        <maven.artifact.threads>10</maven.artifact.threads>
+        <!-- Optimize memory usage -->
+        <maven.compiler.fork>true</maven.compiler.fork>
+        <maven.compiler.maxmem>2048m</maven.compiler.maxmem>
+        <!-- Skip unnecessary operations in CI -->
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.source.skip>false</maven.source.skip>
+        <!-- Use local repository aggressively -->
+        <maven.repo.local>${user.home}/.m2/repository</maven.repo.local>
+      </properties>
+    </profile>
+
+    <!-- Local cache optimization -->
+    <profile>
+      <id>local-cache</id>
+      <properties>
+        <!-- Prefer local repository -->
+        <maven.repo.remote>false</maven.repo.remote>
+        <!-- Cache resolution results -->
+        <maven.resolver.transport>wagon</maven.resolver.transport>
+      </properties>
+    </profile>
+  </profiles>
+
+  <!-- Active profiles for self-hosted runners -->
+  <activeProfiles>
+    <activeProfile>performance</activeProfile>
+    <activeProfile>local-cache</activeProfile>
+  </activeProfiles>
+
+  <!-- Servers configuration (add authentication as needed) -->
+  <servers>
+    <!-- Example for GitHub Packages -->
+    <server>
+      <id>github</id>
+      <username>${env.GITHUB_ACTOR}</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+  </servers>
+
+  <!-- Mirrors for faster downloads (customize based on location) -->
+  <mirrors>
+    <!-- Uncomment and customize based on your location for faster downloads
+    <mirror>
+      <id>maven-central-mirror</id>
+      <name>Maven Central Mirror</name>
+      <url>https://repo1.maven.org/maven2</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+    -->
+  </mirrors>
+
+</settings>
