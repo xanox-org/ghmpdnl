@@ -22,19 +22,19 @@ jobs:
             || echo "Cache cleanup completed with possible warnings"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Cleanup Docker images on self-hosted runner
         run: |
           echo "Cleaning up Docker images..."
           # Remove unused images older than 7 days
           docker image prune -a -f --filter "until=168h" || echo "Docker cleanup completed"
-          
+
           # Clean up dangling images
           docker image prune -f || echo "Dangling images cleanup completed"
-          
+
           # Clean up unused volumes
           docker volume prune -f || echo "Volume cleanup completed"
-          
+
       - name: Cleanup Maven local repository
         run: |
           echo "Cleaning up Maven repository..."
@@ -42,12 +42,12 @@ jobs:
           find ~/.m2/repository -name "*SNAPSHOT*" -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || echo "SNAPSHOT cleanup completed"
           find ~/.m2/repository -name "_remote.repositories" -mtime +14 -delete 2>/dev/null || echo "Remote repos cleanup completed"
           find ~/.m2/repository -name "resolver-status.properties" -mtime +14 -delete 2>/dev/null || echo "Resolver status cleanup completed"
-          
+
       - name: Cleanup npm cache
         run: |
           echo "Cleaning up npm cache..."
           npm cache clean --force 2>/dev/null || echo "npm cache cleanup completed"
-          
+
       - name: Report cleanup status
         run: |
           echo "=== Cleanup Summary ==="

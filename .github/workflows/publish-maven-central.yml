@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-maven-publish-17-
             ${{ runner.os }}-maven-prod-17-
             ${{ runner.os }}-maven-
-      
+
       - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
@@ -45,7 +45,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-v20.14.0-
             ${{ runner.os }}-node-
-      
+
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
@@ -56,7 +56,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
             ${{ runner.os }}-npm-
-      
+
       # Cache GPG keyring for faster signing
       - name: Cache GPG keyring
         uses: actions/cache@v4
@@ -65,13 +65,13 @@ jobs:
           key: ${{ runner.os }}-gpg-${{ hashFiles('~/.gnupg/pubring.kbx') }}
           restore-keys: |
             ${{ runner.os }}-gpg-
-      
+
       # Optimized dependency resolution
-      - name: Resolve dependencies offline  
+      - name: Resolve dependencies offline
         run: |
           mvn dependency:go-offline -B -q || echo "Some dependencies may not be available offline"
           mvn dependency:resolve-sources -B -q || echo "Source resolution completed"
-      
+
       - name: Clean install with optimizations
         run: |
           mvn -Dkey=$API_KEY clean install -B \

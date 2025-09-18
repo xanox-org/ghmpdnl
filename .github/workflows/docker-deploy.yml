@@ -14,17 +14,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: temurin
-          
+
       # Enhanced caching strategy for production builds
       - name: Cache Maven repository
         uses: actions/cache@v4
@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-maven-prod-
             ${{ runner.os }}-maven-
           fail-on-cache-miss: false
-            
+
       - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
@@ -50,7 +50,7 @@ jobs:
             ${{ runner.os }}-node-v20.14.0-
             ${{ runner.os }}-node-
           fail-on-cache-miss: false
-            
+
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
@@ -62,7 +62,7 @@ jobs:
             ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
             ${{ runner.os }}-npm-
           fail-on-cache-miss: false
-          
+
       # Cache compilation artifacts for faster incremental builds
       - name: Cache build artifacts
         uses: actions/cache@v4
@@ -74,14 +74,14 @@ jobs:
           key: ${{ runner.os }}-build-artifacts-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-build-artifacts-
-          
+
       # Optimized dependency installation with offline mode
       - name: Install Maven dependencies (offline first)
         run: |
           # Try to use cached dependencies first
           mvn dependency:go-offline -B -q || echo "Downloading missing dependencies"
           mvn dependency:resolve-sources -B -q || echo "Source resolution completed"
-        
+
       # Optimized npm installation
       - name: Install npm dependencies
         run: |
@@ -89,11 +89,11 @@ jobs:
           # Use npm ci for faster, reliable, reproducible builds
           npm ci --prefer-offline --no-audit
           touch node_modules/.npm-install-complete
-            
+
       # Build with parallel processing for faster compilation
       - name: Build web-api module first
         run: mvn install -pl web-api -B -T 2C -DskipTests
-        
+
       - name: Build application with optimizations
         run: |
           # Build with multiple threads and optimized JVM settings
@@ -102,7 +102,7 @@ jobs:
             -Dmaven.compile.fork=true \
             -Dmaven.compiler.maxmem=2048m \
             -Dmaven.javadoc.skip=true
-        
+
       - name: Validate Docker dependencies
         run: |
           echo "Validating Docker file dependencies..."
@@ -119,7 +119,7 @@ jobs:
             exit 1
           fi
           echo "All Docker dependencies validated successfully"
-        
+
       # Set up Docker Buildx for advanced caching features
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -128,14 +128,14 @@ jobs:
           driver-opts: |
             image=moby/buildkit:latest
             network=host
-        
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-        
+
       # Build and push with advanced caching
       - name: Build and push Docker image with cache
         uses: docker/build-push-action@v5
@@ -153,7 +153,7 @@ jobs:
             type=registry,ref=ghcr.io/xanox-org/ghmpdnl:cache,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
-          
+
       - name: Deploy to Docker host with optimizations
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -163,20 +163,20 @@ jobs:
           script: |
             # Log in to GitHub Container Registry on remote host
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            
+
             # Stop and remove existing container if it exists
             docker stop ghmpdnl || true
             docker rm ghmpdnl || true
-            
+
             # Prune unused images but keep recent ones for cache
             docker image prune -f
-            
+
             # Remove old images (keep latest 5 for caching)
             docker images ghcr.io/xanox-org/ghmpdnl --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -v latest | grep -v cache | tail -n +6 | awk '{print $2}' | xargs -r docker rmi || true
-            
+
             # Pull the latest image (will use layer cache from previous pulls)
             docker pull ghcr.io/xanox-org/ghmpdnl:latest
-            
+
       - name: Run optimized Docker container
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -184,21 +184,21 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            
+
             # Create the volume if it doesn't exist
             docker volume create graphhopper || true
-            
+
             # Initialize volume with proper directory structure (optimized)
             docker run --rm \
               -v graphhopper:/volume \
               alpine:latest sh -c '
                 # Create necessary directories with correct structure
                 mkdir -p /volume/custom_models /volume/graph-cache /volume/logs
-                
+
                 # Set proper permissions (999:999 is the graphhopper user in the container)
                 chown -R 999:999 /volume 2>/dev/null || true
               '
-            
+
             # Copy configuration and custom model to volume using a temporary container
             docker run --rm \
               -v graphhopper:/volume \
@@ -207,16 +207,16 @@ jobs:
                 if [ ! -f /volume/config.yml ]; then
                   cp /tmp/config.yml /volume/config.yml
                 fi
-                
+
                 # Copy custom model if it doesn't exist
                 if [ ! -f /volume/custom_models/moped_nl_model.json ]; then
                   cp /tmp/moped_nl_model.json /volume/custom_models/moped_nl_model.json
                 fi
-                
+
                 # Set permissions
                 chown -R 999:999 /volume 2>/dev/null || true
               '
-            
+
             # Run the new container with optimized settings for self-hosted runners
             docker run -d \
               --name ghmpdnl \
@@ -229,10 +229,10 @@ jobs:
               --shm-size=1g \
               -e JAVA_OPTS="-Xmx4g -Xms2g -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxGCPauseMillis=100 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap" \
               ghcr.io/xanox-org/ghmpdnl:latest
-              
+
             # Wait a moment and check if container is running
             sleep 15
             docker ps | grep ghmpdnl
-            
+
             # Show container logs for verification
             docker logs --tail 30 ghmpdnl

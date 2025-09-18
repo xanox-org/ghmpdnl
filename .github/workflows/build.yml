@@ -13,7 +13,7 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
           distribution: temurin
-      
+
       # Enhanced Maven caching with better cache key strategy
       - name: Cache Maven repository
         uses: actions/cache@v4
@@ -25,7 +25,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-${{ matrix.java-version }}-
             ${{ runner.os }}-maven-
-      
+
       # Cache Maven dependencies offline
       - name: Cache Maven dependencies offline store
         uses: actions/cache@v4
@@ -35,7 +35,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-offline-${{ matrix.java-version }}-
             ${{ runner.os }}-maven-offline-
-      
+
       # Enhanced Node.js caching with version-specific keys
       - name: Cache Node.js installation
         uses: actions/cache@v4
@@ -45,7 +45,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-v20.14.0-
             ${{ runner.os }}-node-
-      
+
       # More precise npm cache with package-lock hash
       - name: Cache npm dependencies
         uses: actions/cache@v4
@@ -57,7 +57,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json') }}
             ${{ runner.os }}-npm-
-      
+
       # Cache compiled classes to speed up incremental builds
       - name: Cache compilation output
         uses: actions/cache@v4
@@ -68,13 +68,13 @@ jobs:
           key: ${{ runner.os }}-compile-${{ matrix.java-version }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-compile-${{ matrix.java-version }}-
-      
+
       # Pre-download dependencies offline to speed up builds
       - name: Download dependencies offline
         run: |
           mvn dependency:go-offline -B -q || echo "Some dependencies may not be available offline"
           mvn dependency:resolve-sources -B -q || echo "Source resolution completed with possible warnings"
-      
+
       - name: Build and Test ${{ matrix.java-version }}
         run: |
           # Use multiple threads for faster builds on self-hosted runners
