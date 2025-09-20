@@ -9,31 +9,46 @@ jobs:
         java-version: [ 24, 25-ea ]
     steps:
       - uses: actions/checkout@v4
+      - name: Setup local cache directories
+        run: |
+          mkdir -p ~/.m2/repository
+          mkdir -p ~/.m2/wrapper
+          mkdir -p web-bundle/node
+          mkdir -p web-bundle/node_modules
       - uses: actions/setup-java@v4
         with:
           java-version: ${{ matrix.java-version }}
           distribution: temurin
+          cache: maven
       - name: Cache Maven artifacts
         uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml', '**/maven-wrapper.properties') }}
           restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
             ${{ runner.os }}-maven-
-      - name: Cache node
+          fail-on-cache-miss: false
+      - name: Cache Node.js installation
         uses: actions/cache@v4
         with:
           path: web-bundle/node
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-node-v20.14.0-npm-10.7.0
           restore-keys: |
-            ${{ runner.os}}-node-
-      - name: Cache node_modules
+            ${{ runner.os }}-node-
+          fail-on-cache-miss: false
+      - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
           path: web-bundle/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/pom.xml', '**/package.json') }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('web-bundle/package-lock.json', 'web-bundle/package.json') }}
           restore-keys: |
-            ${{ runner.os}}-node_modules-
+            ${{ runner.os }}-npm-
+          fail-on-cache-miss: false
       - name: Build ${{ matrix.java-version }}
         run: mvn -B clean test
+        env:
+          MAVEN_OPTS: "-Xmx2g -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
