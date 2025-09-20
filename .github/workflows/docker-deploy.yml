@@ -62,11 +62,6 @@ jobs:
             ${{ runner.os }}-npm-
           fail-on-cache-miss: false
           
-      - name: Install Maven dependencies
-        run: mvn dependency:go-offline -q
-        env:
-          MAVEN_OPTS: "-Xmx2g -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
-        
       - name: Install npm dependencies
         run: |
           cd web-bundle
