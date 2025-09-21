@@ -37,4 +37,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENV JAVA_OPTS="-Xmx2g -Xms1g"
 
 # Default command to run the application
-CMD ["sh", "-c", "cp -n /tmp/config.yml /app/volume/config.yml 2>/dev/null || true && java $JAVA_OPTS -jar app.jar server /app/volume/config.yml"]
+CMD ["sh", "-c", "cp -n /tmp/config.yml /app/volume/config.yml 2>/dev/null || true && mkdir -p /app/volume/custom_models && cp -n /tmp/moped_nl_model.json /app/volume/custom_models/moped_nl_model.json 2>/dev/null || true && java $JAVA_OPTS -jar app.jar server /app/volume/config.yml"]
